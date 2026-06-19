@@ -11,6 +11,7 @@ import {
   setMuted,
   setScreenShake,
   setReducedMotion,
+  setBloom,
 } from '../systems/settings';
 import { audio } from '../systems/audio';
 
@@ -90,12 +91,14 @@ export function createScreens(handlers: ScreenHandlers) {
   // ---- Settings controls ----
   const volEl = $('setVol') as HTMLInputElement;
   const shakeEl = $('setShake') as HTMLInputElement;
+  const bloomEl = $('setBloom') as HTMLInputElement;
   const reduceEl = $('setReduce') as HTMLInputElement;
   const muteEl = $('setMute') as HTMLInputElement;
 
   function syncSettingsControls(): void {
     volEl.value = String(Math.round(settings.volume * 100));
     shakeEl.value = String(Math.round(settings.screenShake * 100));
+    bloomEl.checked = settings.bloom;
     reduceEl.checked = settings.reducedMotion;
     muteEl.checked = settings.muted;
   }
@@ -104,6 +107,7 @@ export function createScreens(handlers: ScreenHandlers) {
     audio.unlock();
   });
   shakeEl.addEventListener('input', () => setScreenShake(Number(shakeEl.value) / 100));
+  bloomEl.addEventListener('change', () => setBloom(bloomEl.checked));
   reduceEl.addEventListener('change', () => setReducedMotion(reduceEl.checked));
   muteEl.addEventListener('change', () => {
     setMuted(muteEl.checked);

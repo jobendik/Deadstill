@@ -13,6 +13,8 @@ export interface Settings {
   muted: boolean;
   /** Screen-shake intensity multiplier 0..1. */
   screenShake: number;
+  /** Neon bloom post-processing. */
+  bloom: boolean;
   /** Reduce flashes/full-screen effects for comfort & accessibility. */
   reducedMotion: boolean;
 }
@@ -23,6 +25,7 @@ const DEFAULTS: Settings = {
   volume: 0.5,
   muted: false,
   screenShake: 1,
+  bloom: true,
   reducedMotion: false,
 };
 
@@ -79,5 +82,10 @@ export function setScreenShake(v: number): void {
 
 export function setReducedMotion(v: boolean): void {
   settings.reducedMotion = v;
+  saveSettings();
+}
+
+export function setBloom(v: boolean): void {
+  settings.bloom = v;
   saveSettings();
 }

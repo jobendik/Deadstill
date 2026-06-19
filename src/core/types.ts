@@ -74,6 +74,8 @@ export interface EBullet {
   vx: number;
   vy: number;
   life: number;
+  /** Set once the bullet has been "grazed" so it only rewards the player once. */
+  grazed?: boolean;
 }
 
 /** Projectile fired by a temporal echo. */
@@ -122,6 +124,27 @@ export interface Popup {
 }
 
 export interface Muzzle {
+  x: number;
+  y: number;
+  ang: number;
+  life: number;
+  scale: number;
+}
+
+/** An expanding ring of light — the punchy shockwave behind impacts. */
+export interface Shockwave {
+  x: number;
+  y: number;
+  r: number;
+  maxR: number;
+  life: number;
+  max: number;
+  color: string;
+  width: number;
+}
+
+/** A fading after-image of the player, drawn as a motion trail. */
+export interface TrailNode {
   x: number;
   y: number;
   ang: number;

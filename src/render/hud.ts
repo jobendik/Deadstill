@@ -12,7 +12,32 @@ import { GUNS, STYLE_COLS } from '../game/config';
 import { settings } from '../systems/settings';
 import type { Game } from '../game/Game';
 
-export function drawHud(ctx: CanvasRenderingContext2D, g: Game): void {
+export function drawHud(ctx: CanvasRenderingContext2D, g: Game, now: number): void {
+  // Aim reticle — sits at the cursor/aim point, breathing and recoiling.
+  if (g.state === 'play' && g.player.gun) {
+    const c = GUNS[g.player.gun.type].color;
+    const recoil = clamp(g.fireCd / GUNS[g.player.gun.type].cd, 0, 1);
+    const rr = 9 + recoil * 7 + Math.sin(now * 4) * 0.8;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = rgba(c, 0.5);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(g.aimX, g.aimY, rr, 0, TAU);
+    ctx.stroke();
+    ctx.beginPath();
+    for (const d of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
+      ctx.moveTo(g.aimX + Math.cos(d) * (rr + 2), g.aimY + Math.sin(d) * (rr + 2));
+      ctx.lineTo(g.aimX + Math.cos(d) * (rr + 6), g.aimY + Math.sin(d) * (rr + 6));
+    }
+    ctx.stroke();
+    ctx.fillStyle = rgba(c, 0.9);
+    ctx.beginPath();
+    ctx.arc(g.aimX, g.aimY, 1.3, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
+
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 
@@ -25,9 +50,15 @@ export function drawHud(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.fillText('SCORE', 26, 66);
   if (g.combo > 1) {
     const cl = clamp(g.comboTimer / 2.4, 0, 1);
+    // Punch the counter right after a kill (comboTimer freshly reset to 2.4).
+    const punch = clamp((g.comboTimer - 2.05) / 0.35, 0, 1);
+    const cz = 22 + punch * 9;
     ctx.fillStyle = COL.gold;
-    ctx.font = '900 22px ui-monospace,monospace';
+    ctx.shadowColor = COL.gold;
+    ctx.shadowBlur = 6 + punch * 12;
+    ctx.font = '900 ' + cz.toFixed(0) + 'px ui-monospace,monospace';
     ctx.fillText('x' + g.combo, 24, 92);
+    ctx.shadowBlur = 0;
     ctx.fillStyle = rgba(COL.gold, 0.25);
     ctx.fillRect(24, 98, 90, 4);
     ctx.fillStyle = COL.gold;
@@ -60,8 +91,16 @@ export function drawHud(ctx: CanvasRenderingContext2D, g: Game): void {
   const sby = 66;
   ctx.fillStyle = rgba(rc, 0.12);
   ctx.fillRect(sbx, sby, sbw, 4);
-  ctx.fillStyle = rgba(rc, 0.75);
+  const styleGrad = ctx.createLinearGradient(sbx, 0, sbx + sbw, 0);
+  styleGrad.addColorStop(0, rgba(rc, 0.5));
+  styleGrad.addColorStop(1, rc);
+  ctx.fillStyle = styleGrad;
   ctx.fillRect(sbx, sby, sbw * (g.style / 100), 4);
+  // tick marks at rank thresholds
+  ctx.fillStyle = rgba(COL.bg, 0.6);
+  for (const thr of [14, 30, 50, 70, 85, 95]) {
+    ctx.fillRect(sbx + sbw * (thr / 100), sby, 1, 4);
+  }
   ctx.fillStyle = rgba(COL.muted, 0.5);
   ctx.font = '700 9px ui-monospace,monospace';
   ctx.textAlign = 'right';
@@ -142,6 +181,12 @@ export function drawHud(ctx: CanvasRenderingContext2D, g: Game): void {
   // Hit flash
   if (g.hitstop > 0) {
     ctx.fillStyle = rgba(COL.white, clamp(g.hitstop / 0.14, 0, 1) * 0.1);
+    ctx.fillRect(0, 0, W, H);
+  }
+  // Death flash — a hard red punch the instant you go down.
+  if (g.killFlash > 0) {
+    const kf = clamp(g.killFlash / 0.5, 0, 1) * (settings.reducedMotion ? 0.4 : 1);
+    ctx.fillStyle = rgba(COL.hot, kf * 0.28);
     ctx.fillRect(0, 0, W, H);
   }
 
