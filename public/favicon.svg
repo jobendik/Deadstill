@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#0b1322"/>
+      <stop offset="100%" stop-color="#05070d"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <rect x="2.5" y="2.5" width="59" height="59" rx="12" fill="none" stroke="#5fe6ff" stroke-opacity="0.5" stroke-width="2"/>
+  <!-- enemy diamond -->
+  <g filter="url(#glow)">
+    <path d="M44 18 L52 27 L44 36 L36 27 Z" fill="#ff4d4d"/>
+  </g>
+  <!-- player + aim -->
+  <g filter="url(#glow)">
+    <circle cx="24" cy="40" r="9" fill="#bfeeff"/>
+    <line x1="24" y1="40" x2="42" y2="28" stroke="#eaf2ff" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+</svg>
