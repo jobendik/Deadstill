@@ -51,6 +51,8 @@ import type {
   KillFlags,
   HistorySnapshot,
   GameState,
+  Shockwave,
+  TrailNode,
 } from '../core/types';
 
 const ENEMY_COLORS: Record<EnemyType, string> = {
@@ -124,6 +126,17 @@ export class Game {
   echoFlash!: number;
   btFlash!: number;
 
+  // Juice & gamefeel (cosmetic — not snapshotted)
+  shockwaves!: Shockwave[];
+  trail!: TrailNode[];
+  zoomPunch!: number;
+  aimX!: number;
+  aimY!: number;
+  killFlash!: number;
+  grazeT!: number;
+  grazeChain!: number;
+  grazeIdle!: number;
+
   constructor() {
     this.reset();
   }
@@ -185,9 +198,31 @@ export class Game {
     this.rewindFlash = 0;
     this.echoFlash = 0;
     this.btFlash = 0;
+    // Juice & gamefeel
+    this.shockwaves = [];
+    this.trail = [];
+    this.zoomPunch = 0;
+    this.aimX = W / 2;
+    this.aimY = H / 2 - 1;
+    this.killFlash = 0;
+    this.grazeT = 0;
+    this.grazeChain = 0;
+    this.grazeIdle = 0;
     this.wave = 1;
     this.spawnWave(1);
     this.waveActive = true;
+  }
+
+  // ---- Juice helpers ----------------------------------------------------
+  /** Spawn an expanding ring of light at a point. */
+  shock(x: number, y: number, maxR: number, color: string, life = 0.4, width = 3): void {
+    this.shockwaves.push({ x, y, r: 0, maxR, life, max: life, color, width });
+    if (this.shockwaves.length > 24) this.shockwaves.shift();
+  }
+
+  /** Add a camera zoom-punch impulse (decays back to 0). */
+  punch(amt: number): void {
+    this.zoomPunch = Math.min(0.08, this.zoomPunch + amt);
   }
 
   // ---- Wave director ----------------------------------------------------
@@ -274,8 +309,10 @@ export class Game {
     }
     p.gun.ammo--;
     this.fireCd = g.cd;
-    this.muzzle = { x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, ang: a, life: 0.06 };
-    this.shake = Math.min(this.shake + 3.2, 9);
+    const mscale = p.gun.type === 'shotgun' ? 1.5 : p.gun.type === 'rifle' ? 1.25 : 1;
+    this.muzzle = { x: p.x + Math.cos(a) * 16, y: p.y + Math.sin(a) * 16, ang: a, life: 0.07, scale: mscale };
+    this.shake = Math.min(this.shake + 3.2 * mscale, 10);
+    this.punch(0.006 * mscale);
     audio.play('shoot');
   }
 
@@ -354,6 +391,7 @@ export class Game {
         kind: 'spark',
       });
     }
+    this.shock(e.x, e.y, 40, COL.violet, 0.25, 2);
     this.shake = Math.min(this.shake + 5, 11);
   }
 
@@ -469,6 +507,10 @@ export class Game {
         kind: 'gib',
       });
     }
+    this.shock(p.x, p.y, 180, COL.hot, 0.6, 5);
+    this.shock(p.x, p.y, 90, COL.white, 0.4, 3);
+    this.punch(0.06);
+    this.killFlash = 0.5;
     audio.play('hurt');
   }
 
@@ -491,6 +533,11 @@ export class Game {
         kind: 'gib',
       });
     }
+    // Impact: bright pop + expanding shockwave; elites hit harder.
+    const elite = e.isElite || e.type === 'timehunter';
+    this.shock(e.x, e.y, e.r + (elite ? 60 : 26), c, elite ? 0.5 : 0.32, elite ? 4 : 2.5);
+    this.shock(e.x, e.y, e.r + 10, COL.white, 0.22, 2);
+    this.punch(elite ? 0.03 : 0.004);
     if (e.type !== 'rusher' && e.type !== 'timehunter') {
       const d = Math.random() < 0.16 ? 'shotgun' : Math.random() < 0.08 ? 'rifle' : 'pistol';
       this.pickups.push({ type: d, x: e.x, y: e.y, vx: 0, vy: 0, thrown: false, spin: rnd(0, TAU), life: 9999 });
@@ -535,9 +582,17 @@ export class Game {
       this.killSinceRewind = 0;
       this.popup(this.player.x, this.player.y - 28, 'REWIND +1', COL.violet);
     }
+    // Combo milestones — escalating feedback every 5 chained kills.
+    if (this.combo > 0 && this.combo % 5 === 0) {
+      this.popup(this.player.x, this.player.y - 64, 'COMBO ×' + this.combo, COL.gold);
+      this.shock(this.player.x, this.player.y, 130, COL.gold, 0.5, 3);
+      this.punch(0.02);
+      audio.play('milestone', this.combo);
+    }
     this.btMeter = Math.min(1, this.btMeter + 0.12);
     this.shake = Math.min(this.shake + 4, 10);
-    this.hitstop = Math.max(this.hitstop, 0.04);
+    // Brief hitstop scaled by combo for a satisfying "crunch" on big chains.
+    this.hitstop = Math.max(this.hitstop, 0.04 + Math.min(this.combo, 8) * 0.004);
     audio.play('kill');
     audio.play('combo', this.combo);
   }
@@ -669,6 +724,9 @@ export class Game {
     this.popups = [];
     this.muzzle = null;
     this.fireCd = 0;
+    this.shockwaves = [];
+    this.trail = [];
+    this.killFlash = 0;
   }
 
   requestRewind(): boolean {
@@ -712,6 +770,8 @@ export class Game {
     this.state = 'play';
     this.shake = 10;
     this.rewindFlash = 0.5;
+    this.shock(this.player.x, this.player.y, 220, COL.violet, 0.7, 4);
+    this.punch(0.05);
     audio.play('rewind');
     return true;
   }
@@ -730,12 +790,27 @@ export class Game {
     this.state = 'play';
     this.shake = 9;
     this.rewindFlash = 0.4;
+    this.shock(this.player.x, this.player.y, 220, COL.violet, 0.7, 4);
+    this.punch(0.05);
     audio.play('rewind');
     return true;
   }
 
   giveUp(): void {
     this.state = 'over';
+  }
+
+  /** Advance cosmetic juice (shockwaves, trail, camera punch) in real time. */
+  updateJuice(dt: number): void {
+    for (const s of this.shockwaves) {
+      s.life -= dt;
+      s.r += (s.maxR - s.r) * Math.min(1, dt * 11);
+    }
+    this.shockwaves = this.shockwaves.filter((s) => s.life > 0);
+    for (const t of this.trail) t.life -= dt;
+    this.trail = this.trail.filter((t) => t.life > 0);
+    this.zoomPunch = approach(this.zoomPunch, 0, dt * 0.55);
+    this.killFlash = Math.max(0, this.killFlash - dt);
   }
 
   decayFx(dt: number): void {
@@ -757,6 +832,7 @@ export class Game {
       this.muzzle.life -= dt;
       if (this.muzzle.life <= 0) this.muzzle = null;
     }
+    this.updateJuice(dt);
   }
 
   // ---- Main step --------------------------------------------------------
@@ -781,6 +857,8 @@ export class Game {
     const my = clamp(c?.my ?? 0, -1, 1);
     const ax = c?.ax == null ? p.x + Math.cos(p.ang) : c.ax;
     const ay = c?.ay == null ? p.y + Math.sin(p.ang) : c.ay;
+    this.aimX = ax;
+    this.aimY = ay;
     const fire = !!c?.fire;
     const thrw = !!c?.thrw;
     const dash = !!c?.dash;
@@ -820,6 +898,8 @@ export class Game {
       el.r = 17;
       this.enemies.push(el);
       this.popup(W / 2, H * 0.36, '⚠ TIME HUNTER ⚠', COL.gold);
+      this.shock(el.x, el.y, 70, COL.gold, 0.6, 4);
+      this.punch(0.03);
       audio.play('wave');
     }
 
@@ -850,6 +930,7 @@ export class Game {
         this.dashT = 0.13;
         this.dashCd = 0.72;
         this.invuln = Math.max(this.invuln, 0.18);
+        this.shock(p.x, p.y, 60, COL.cyan, 0.3, 2.5);
         audio.play('dash');
       }
     }
@@ -861,6 +942,14 @@ export class Game {
     }
     p.ang = angTo(p.x, p.y, ax, ay);
     if (this.invuln > 0) this.invuln -= dt;
+
+    // Motion trail — denser while time flows / dashing, for a speed read.
+    const speedFrac = this.dashT > 0 ? 1 : clamp(mvmag, 0, 1);
+    if (speedFrac > 0.35) {
+      this.trail.push({ x: p.x, y: p.y, ang: p.ang, life: 0.22 });
+      if (this.trail.length > 18) this.trail.shift();
+    }
+    this.updateJuice(dt);
 
     // Fire / throw / pickup
     this.fireCd -= dt;
@@ -897,6 +986,10 @@ export class Game {
     }
     this.rewindFlash = Math.max(0, this.rewindFlash - dt);
     this.echoFlash = Math.max(0, this.echoFlash - dt);
+    // Graze throttle + chain decay
+    this.grazeT = Math.max(0, this.grazeT - dt);
+    this.grazeIdle += dt;
+    if (this.grazeIdle > 1.2) this.grazeChain = 0;
 
     // World advances by gdt
     for (const b of this.pbul) {
@@ -1194,16 +1287,48 @@ export class Game {
         if (dist(k.x, k.y, e.x, e.y) < e.r + 9) this.killEnemy(e, { disarm: true });
       }
     }
-    // Enemy bullets -> player
+    // Enemy bullets -> player (with graze: reward skilful near-misses).
     if (this.invuln <= 0) {
+      const grazeR = p.r + 22;
       for (const b of this.ebul) {
         if (b.life <= 0) continue;
-        if (dist(b.x, b.y, p.x, p.y) < p.r + 3) {
+        const d = dist(b.x, b.y, p.x, p.y);
+        if (d < p.r + 3) {
           b.life = 0;
           this.hurtPlayer();
           break;
+        } else if (d < grazeR && !b.grazed) {
+          b.grazed = true;
+          this.onGraze(b);
         }
       }
+    }
+  }
+
+  /** A bullet slipped past within a hair — reward style and a flick of feedback. */
+  private onGraze(b: EBullet): void {
+    this.grazeChain = Math.min(this.grazeChain + 1, 99);
+    this.addStyle(4 + Math.min(this.grazeChain, 6));
+    this.btMeter = Math.min(1, this.btMeter + 0.03);
+    this.grazeIdle = 0;
+    const ga = angTo(this.player.x, this.player.y, b.x, b.y);
+    for (let i = 0; i < 3; i++) {
+      const sa = ga + rnd(-0.5, 0.5);
+      this.particles.push({
+        x: b.x,
+        y: b.y,
+        vx: Math.cos(sa) * rnd(40, 110),
+        vy: Math.sin(sa) * rnd(40, 110),
+        life: 0.22,
+        max: 0.22,
+        color: COL.cyan,
+        kind: 'spark',
+      });
+    }
+    if (this.grazeT <= 0) {
+      this.popup(this.player.x, this.player.y - 40, this.grazeChain > 2 ? 'GRAZE ×' + this.grazeChain : 'GRAZE', COL.cyan);
+      this.grazeT = 0.45;
+      audio.play('graze');
     }
   }
 }

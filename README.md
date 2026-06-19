@@ -36,6 +36,7 @@ stylish play:
 | 🟢 **Bullet Time** | Hold to crush time to a crawl independent of movement, draining a regenerating meter. |
 | 💨 **Dash** | A short i-frame dash that shreds enemies and deflects bullets on contact. |
 | ✨ **Style Meter** | Ranks from D → SSS. Kills in frozen time, disarms, long shots, echo and dash kills all build it — and it multiplies your score. |
+| 〰️ **Graze** | Let enemy fire slip past within a hair to bank style and bullet-time — chain near-misses for escalating reward. |
 | 🔫 **Weapons** | Pistol, shotgun and rifle. Run dry? Throw your gun as a projectile, then grab another off the floor. |
 
 ### Enemies
@@ -146,10 +147,24 @@ Vite is configured with a relative `base` (`./`), so the build works unchanged
 whether it's served from the project subpath
 (`https://jobendik.github.io/deadstill/`) or a custom domain root.
 
+## Visual & game feel
+
+A dedicated juice pass gives the game its production sheen:
+
+- **Additive neon bloom** post-processing (half-res, GPU-blurred) plus a
+  cinematic **vignette** — toggleable, with graceful fallback.
+- **Impact shockwaves**, a weapon-scaled **muzzle burst**, a player **motion
+  trail**, and **camera zoom-punches** on big moments (kills, death, rewind).
+- **Combo milestones** every five chained kills, **combo-scaled hitstop**, and
+  a breathing **aim reticle** that recoils as you fire.
+- **Ambient dust** that drifts with game-time — it slows when you freeze time
+  and flows when you move, quietly reinforcing the core mechanic.
+
 ## Accessibility & polish
 
-- **Settings** panel (⚙) with master volume, screen-shake intensity, a
-  reduced-motion toggle and mute — all persisted to `localStorage`.
+- **Settings** panel (⚙) with master volume, screen-shake intensity, a **bloom**
+  toggle, a **reduced-motion** mode (tones down shake, zoom, trails and flashes)
+  and mute — all persisted to `localStorage`.
 - **Auto-pause** when the tab is hidden or loses focus.
 - **DPI-aware rendering** — the canvas is drawn at device resolution so visuals
   stay crisp on high-density displays.

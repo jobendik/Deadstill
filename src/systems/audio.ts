@@ -157,6 +157,15 @@ const sfx: Record<string, (n?: number) => void> = {
   ui() {
     env('square', 660, 880, 0.05, 0.08);
   },
+  milestone(n?: number) {
+    const k = isFinite(n ?? 0) ? Math.min((n ?? 0) / 5, 6) : 0;
+    env('square', 520 + k * 60, 1040 + k * 80, 0.12, 0.12);
+    setTimeout(() => env('sine', 780 + k * 80, 1300, 0.16, 0.1), 70);
+  },
+  graze() {
+    env('sine', 1500, 2400, 0.05, 0.05);
+    noise(0.04, 0.04, 5200);
+  },
 };
 
 // Keep the audio graph in sync with live settings changes (volume slider, mute).

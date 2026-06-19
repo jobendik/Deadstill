@@ -7,11 +7,14 @@ import { W, H, AX0, AY0, AX1, AY1, AW, AH, TAU, COL } from '../core/constants';
 import { rgba } from '../core/color';
 import { drawScene } from './scene';
 import { drawHud } from './hud';
+import { applyBloom, applyVignette } from './postfx';
 import type { Game } from '../game/Game';
 
 export function render(ctx: CanvasRenderingContext2D, g: Game, now: number): void {
   drawScene(ctx, g, now);
-  drawHud(ctx, g);
+  applyBloom(ctx);
+  applyVignette(ctx);
+  drawHud(ctx, g, now);
 }
 
 /** Animated starfield/grid shown behind the title and menu screens. */

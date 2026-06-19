@@ -48,6 +48,86 @@ export function drawGunIcon(
   ctx.restore();
 }
 
+// ---- Ambient dust ------------------------------------------------------
+// Slow-drifting motes whose motion is driven by game-time (g.clock), so they
+// freeze when you freeze and drift when time flows — a quiet reinforcement of
+// the core mechanic.
+interface Mote {
+  bx: number;
+  by: number;
+  dir: number;
+  spd: number;
+  size: number;
+  phase: number;
+  color: string;
+}
+const MOTES: Mote[] = [];
+const MOTE_COLORS = [COL.cyan, COL.violet, COL.echo];
+function ensureMotes(): void {
+  if (MOTES.length) return;
+  for (let i = 0; i < 46; i++) {
+    MOTES.push({
+      bx: Math.random() * AW,
+      by: Math.random() * AH,
+      dir: Math.random() * TAU,
+      spd: 6 + Math.random() * 16,
+      size: 0.6 + Math.random() * 1.4,
+      phase: Math.random() * TAU,
+      color: MOTE_COLORS[(Math.random() * MOTE_COLORS.length) | 0],
+    });
+  }
+}
+function drawDust(ctx: CanvasRenderingContext2D, g: Game, now: number): void {
+  ensureMotes();
+  const t = g.clock;
+  for (const m of MOTES) {
+    const x = AX0 + ((((m.bx + Math.cos(m.dir) * m.spd * t) % AW) + AW) % AW);
+    const y = AY0 + ((((m.by + Math.sin(m.dir) * m.spd * t) % AH) + AH) % AH);
+    const tw = 0.4 + 0.6 * Math.abs(Math.sin(now * 0.7 + m.phase));
+    ctx.fillStyle = rgba(m.color, 0.04 + 0.11 * tw);
+    ctx.beginPath();
+    ctx.arc(x, y, m.size, 0, TAU);
+    ctx.fill();
+  }
+}
+
+// ---- Shockwaves & player trail (additive glow) -------------------------
+function drawShockwaves(ctx: CanvasRenderingContext2D, g: Game): void {
+  if (!g.shockwaves.length) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const s of g.shockwaves) {
+    const a = clamp(s.life / s.max, 0, 1);
+    const ease = 1 - (1 - a) * (1 - a);
+    ctx.strokeStyle = rgba(s.color, a * 0.55);
+    ctx.lineWidth = s.width * (0.35 + a * 0.9);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, TAU);
+    ctx.stroke();
+    // faint leading edge highlight
+    ctx.strokeStyle = rgba(COL.white, a * a * 0.25);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r * (0.96 + 0.04 * ease), 0, TAU);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawTrail(ctx: CanvasRenderingContext2D, g: Game): void {
+  if (!g.trail.length || settings.reducedMotion) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const r = g.player.r;
+  for (const t of g.trail) {
+    const a = clamp(t.life / 0.22, 0, 1);
+    ctx.fillStyle = rgba(COL.cyan, a * 0.16);
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r * (0.55 + 0.45 * a), 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 export function drawScene(ctx: CanvasRenderingContext2D, g: Game, now: number): void {
   const warm = clamp((g.ts - 0.1) / 0.9, 0, 1);
   const btP = g.btOn ? 0.5 + 0.5 * Math.sin(now * 22) : 0;
@@ -60,10 +140,17 @@ export function drawScene(ctx: CanvasRenderingContext2D, g: Game, now: number): 
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, W, H);
 
-  const sh = g.shake * settings.screenShake;
+  const shakeMul = settings.screenShake * (settings.reducedMotion ? 0.35 : 1);
+  const sh = g.shake * shakeMul;
   const sx = (Math.random() * 2 - 1) * sh;
   const sy = (Math.random() * 2 - 1) * sh;
+  const z = settings.reducedMotion ? 1 : 1 + g.zoomPunch;
   ctx.save();
+  if (z !== 1) {
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(z, z);
+    ctx.translate(-W / 2, -H / 2);
+  }
   ctx.translate(sx, sy);
 
   // Grid
@@ -81,6 +168,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, g: Game, now: number): 
     ctx.lineTo(AX1, y);
   }
   ctx.stroke();
+
+  // Ambient dust (drifts with game-time)
+  drawDust(ctx, g, now);
 
   // Arena border
   const bc = g.btOn ? mix(COL.good, COL.cyan, btP) : mix(COL.cyan, COL.hot, warm);
@@ -412,25 +502,43 @@ export function drawScene(ctx: CanvasRenderingContext2D, g: Game, now: number): 
     }
   }
 
-  // Muzzle flash
+  // Muzzle flash — radial burst + tapered spike, weapon-scaled.
   if (g.muzzle) {
-    const a = clamp(g.muzzle.life / 0.06, 0, 1);
+    const a = clamp(g.muzzle.life / 0.07, 0, 1);
+    const ms = g.muzzle.scale;
     ctx.save();
     ctx.translate(g.muzzle.x, g.muzzle.y);
+    // soft light burst
+    ctx.globalCompositeOperation = 'lighter';
+    const burst = ctx.createRadialGradient(0, 0, 0, 0, 0, 26 * ms);
+    burst.addColorStop(0, rgba(COL.white, a * 0.6));
+    burst.addColorStop(0.5, rgba(COL.cyan, a * 0.22));
+    burst.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = burst;
+    ctx.beginPath();
+    ctx.arc(0, 0, 26 * ms, 0, TAU);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    // directional spike
     ctx.rotate(g.muzzle.ang);
+    ctx.scale(ms, ms);
     ctx.fillStyle = rgba(COL.white, a * 0.9);
     ctx.shadowColor = COL.cyan;
     ctx.shadowBlur = 16;
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(16, -6);
-    ctx.lineTo(24, 0);
+    ctx.lineTo(26, 0);
     ctx.lineTo(16, 6);
     ctx.closePath();
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
   }
+
+  // Player motion trail + impact shockwaves
+  drawTrail(ctx, g);
+  drawShockwaves(ctx, g);
 
   // Player
   const p = g.player;
