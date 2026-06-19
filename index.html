@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>DEADSTILL — Rewind Edition</title>
+<meta name="description" content="A time-bending twin-stick arena shooter. Time only moves when you do — freeze the world, plan the perfect shot, and rewind death into a temporal echo of yourself.">
+<meta name="theme-color" content="#05070d">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./favicon.svg">
+<link rel="manifest" href="./manifest.webmanifest">
+<!-- Open Graph / social -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="DEADSTILL — Rewind Edition">
+<meta property="og:description" content="Time only moves when you do. A time-bending twin-stick arena shooter.">
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="960" height="600"></canvas>
+  <div id="util">
+    <div class="icobtn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</div>
+    <div class="icobtn" id="muteBtn" title="Mute" aria-label="Mute">♪</div>
+  </div>
+
+  <div class="layer on" id="menu">
+    <div class="panel">
+      <h1>DEAD<span class="b">STILL</span></h1>
+      <div class="tag">rewind edition · time moves when you do</div>
+      <div class="how">
+        <b>Stand still — world freezes. Move to let time flow.</b><br>
+        <span class="k">WASD</span> move &nbsp;<span class="k">mouse</span> aim &nbsp;<span class="k">LMB</span> shoot<br>
+        <span class="k">Space</span>/<span class="k">RMB</span> throw weapon &nbsp;<span class="k">Shift</span> dash<br>
+        <span class="k">Q</span> hold — bullet time &nbsp;<span class="k">R</span> rewind after death<br>
+        <b>Rewind leaves a temporal echo of your past self.</b>
+      </div>
+      <div class="row"><div class="btn" id="playBtn">▶ Play</div></div>
+      <div class="fdim">Best <span id="menuBest">0</span></div>
+    </div>
+  </div>
+
+  <div class="layer" id="pause">
+    <div class="panel">
+      <div class="big">PAUSED</div>
+      <div class="row">
+        <div class="btn" id="resumeBtn">Resume</div>
+        <div class="btn ghost" id="settingsFromPause">Settings</div>
+        <div class="btn ghost" id="quitBtn">Quit</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layer" id="over">
+    <div class="panel">
+      <div class="stat">Run over · wave <span id="ovWave">1</span></div>
+      <div class="scoreNum" id="ovScore">0</div>
+      <div class="best">Best <span id="ovBest">0</span></div>
+      <div class="newbest hidden" id="ovNew">NEW BEST</div>
+      <div class="ovstats">
+        <div><b id="ovKills">0</b><span>KILLS</span></div>
+        <div><b id="ovStreak">0</b><span>BEST STREAK</span></div>
+        <div><b id="ovTime">0:00</b><span>TIME</span></div>
+      </div>
+      <div class="row">
+        <div class="btn rev hidden" id="reviveBtn">▶ Revive (ad)</div>
+        <div class="btn" id="againBtn">↻ Play again</div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="btn ghost" id="menuBtn">Menu</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layer" id="settings">
+    <div class="panel">
+      <div class="big">SETTINGS</div>
+      <div class="settings">
+        <label class="srow"><span>Volume</span><input type="range" id="setVol" min="0" max="100" step="1"></label>
+        <label class="srow"><span>Screen shake</span><input type="range" id="setShake" min="0" max="100" step="1"></label>
+        <label class="srow toggle"><span>Reduced motion</span><input type="checkbox" id="setReduce"></label>
+        <label class="srow toggle"><span>Mute</span><input type="checkbox" id="setMute"></label>
+      </div>
+      <div class="row"><div class="btn" id="settingsClose">Close</div></div>
+    </div>
+  </div>
+
+  <div class="layer on" id="loading"><div class="spin"></div></div>
+
+  <div id="mob">
+    <div id="pauseBtn">⏸</div>
+    <div class="pad" id="padL"></div>
+    <div class="pad" id="padR"></div>
+    <div class="stick" id="stickL"><div class="nub"></div></div>
+    <div class="stick" id="stickR"><div class="nub"></div></div>
+    <div id="throwBtn">THROW</div>
+    <div id="dashBtn">DASH</div>
+  </div>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

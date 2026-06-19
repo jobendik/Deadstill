@@ -1,0 +1,32 @@
+{
+  "name": "deadstill",
+  "version": "1.0.0",
+  "description": "DEADSTILL — Rewind Edition. A time-bending twin-stick arena shooter where time only moves when you do.",
+  "type": "module",
+  "license": "MIT",
+  "author": "jobendik",
+  "homepage": "https://jobendik.github.io/deadstill/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jobendik/deadstill.git"
+  },
+  "keywords": [
+    "game",
+    "html5",
+    "canvas",
+    "typescript",
+    "vite",
+    "twin-stick-shooter",
+    "superhot"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}
